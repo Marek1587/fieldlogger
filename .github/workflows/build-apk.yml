@@ -28,7 +28,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-- name: Enable AndroidX
+      - name: Enable AndroidX
         working-directory: project
         run: |
           echo "android.useAndroidX=true" > gradle.properties
@@ -37,7 +37,7 @@ jobs:
       - name: Build debug APK
         working-directory: project
         run: gradle :app:assembleDebug
-        
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
