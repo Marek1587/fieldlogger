@@ -16,6 +16,7 @@ jobs:
 
       - name: Unzip project
         run: |
+          rm -rf project
           unzip FieldLogger_GitHub_Actions_Project.zip -d project
           ls -la project
 
@@ -28,11 +29,43 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Enable AndroidX
+      - name: Enable AndroidX and JVM target
         working-directory: project
         run: |
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+
+          old = '''android {
+              namespace = "sk.strechostav.fieldlogger"
+              compileSdk = 35
+
+              defaultConfig {'''
+
+          new = '''android {
+              namespace = "sk.strechostav.fieldlogger"
+              compileSdk = 35
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              defaultConfig {'''
+
+          if "compileOptions" not in s:
+              s = s.replace(old, new)
+
+          p.write_text(s)
+          PY
 
       - name: Build debug APK
         working-directory: project
