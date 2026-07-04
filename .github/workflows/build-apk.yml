@@ -17,7 +17,7 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip -o FieldLogger_GitHub_Actions_Project.zip -d project
+          unzip FieldLogger_FIXED.zip -d project
           ls -la project
           ls -la project/app
 
