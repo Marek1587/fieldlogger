@@ -17,38 +17,64 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip FieldLogger_GitHub_Actions_Project.zip -d project
+          unzip -o FieldLogger_GitHub_Actions_Project.zip -d project
           ls -la project
+          ls -la project/app
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Enable AndroidX and JVM target
+      - name: Rewrite Gradle config safely
         working-directory: project
         run: |
-          echo "android.useAndroidX=true" > gradle.properties
-          echo "android.enableJetifier=true" >> gradle.properties
-          python3 - <<'PY'
-          from pathlib import Path
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
 
-          p = Path("app/build.gradle.kts")
-          s = p.read_text()
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
 
-          old = '''android {
+          rootProject.name = "FieldLogger"
+          include(":app")
+          EOF
+
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.7.3" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8
+          EOF
+
+          cat > app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
               namespace = "sk.strechostav.fieldlogger"
               compileSdk = 35
 
-              defaultConfig {'''
-
-          new = '''android {
-              namespace = "sk.strechostav.fieldlogger"
-              compileSdk = 35
+              defaultConfig {
+                  applicationId = "sk.strechostav.fieldlogger"
+                  minSdk = 26
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "0.1"
+              }
 
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
@@ -58,18 +84,39 @@ jobs:
               kotlinOptions {
                   jvmTarget = "17"
               }
+          }
 
-              defaultConfig {'''
+          dependencies {
+              implementation("androidx.core:core-ktx:1.13.1")
+          }
+          EOF
 
-          if "compileOptions" not in s:
-              s = s.replace(old, new)
+          echo "==== settings.gradle.kts ===="
+          cat settings.gradle.kts
 
-          p.write_text(s)
-          PY
+          echo "==== build.gradle.kts ===="
+          cat build.gradle.kts
+
+          echo "==== app/build.gradle.kts ===="
+          cat app/build.gradle.kts
+
+          echo "==== gradle.properties ===="
+          cat gradle.properties
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
 
       - name: Build debug APK
         working-directory: project
-        run: gradle :app:assembleDebug
+        run: gradle :app:assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
