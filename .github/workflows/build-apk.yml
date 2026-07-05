@@ -18,7 +18,7 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip FieldManualLogger_ROBUST.zip -d project
+          unzip FieldManualLogger_PHOTO_DRIVE.zip -d project
           ls -la project
           ls -la project/app
 
