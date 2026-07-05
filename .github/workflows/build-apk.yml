@@ -17,7 +17,7 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip FieldLogger_FULL_ACTIVITY_STABLE.zip -d project
+          unzip FieldManualLogger_EXCEL.zip -d project
           ls -la project
           ls -la project/app
 
