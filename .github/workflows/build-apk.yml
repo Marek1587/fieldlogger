@@ -18,7 +18,7 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip FieldManualLogger_TILES_GOOGLE.zip -d project
+          unzip FieldManualLogger_FORM_DRAG_SPEECH_PERSIST.zip -d project
           ls -la project
           ls -la project/app
 
