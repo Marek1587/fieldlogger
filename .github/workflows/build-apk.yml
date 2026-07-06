@@ -18,7 +18,7 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip FieldManualLogger_PHOTO_DRIVE.zip -d project
+          unzip MobileActivityLogger_GoogleSheets.zip -d project
           ls -la project
           ls -la project/app
 
