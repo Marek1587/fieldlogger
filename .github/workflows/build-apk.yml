@@ -18,7 +18,7 @@ jobs:
       - name: Unzip project
         run: |
           rm -rf project
-          unzip MobileActivityLogger_GoogleSheets.zip -d project
+          unzip MobileActivityLogger_SCREEN_CONTEXT.zip -d project
           ls -la project
           ls -la project/app
 
