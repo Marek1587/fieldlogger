@@ -15,10 +15,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Find newest ZIP
+        id: find_zip
+        run: |
+          ZIP_FILE=$(ls -t *.zip | head -n 1)
+          echo "Newest ZIP: $ZIP_FILE"
+          echo "zip_file=$ZIP_FILE" >> "$GITHUB_OUTPUT"
+
       - name: Unzip project
         run: |
           rm -rf project
-          unzip MobileActivityLogger_V5_CALL_BATTERY_FIX.zip -d project
+          unzip -o "${{ steps.find_zip.outputs.zip_file }}" -d project
           ls -la project
           ls -la project/app
 
@@ -40,5 +47,5 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FieldManualLogger-debug-apk
+          name: Android-debug-apk
           path: project/app/build/outputs/apk/debug/app-debug.apk
