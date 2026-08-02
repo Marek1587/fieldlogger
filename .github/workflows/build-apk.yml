@@ -17,24 +17,80 @@ jobs:
 
       - name: Find newest ZIP
         id: find_zip
+        shell: bash
         run: |
-          ZIP_FILE=$(ls -t *.zip | head -n 1)
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' \
+            -printf '%T@ %f\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+
+          if [[ -z "$ZIP_FILE" ]]; then
+            echo "::error::V hlavnom priečinku repozitára sa nenašiel žiadny ZIP súbor."
+            exit 1
+          fi
+
           echo "Newest ZIP: $ZIP_FILE"
           echo "zip_file=$ZIP_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Unzip project
+        shell: bash
         run: |
           echo "Building ZIP: ${{ steps.find_zip.outputs.zip_file }}"
+
           rm -rf project
+          mkdir -p project
+
           unzip -o "${{ steps.find_zip.outputs.zip_file }}" -d project
+
+          if [[ ! -f "project/settings.gradle.kts" && ! -f "project/settings.gradle" ]]; then
+            echo "::error::ZIP neobsahuje Android projekt priamo v koreňovom priečinku."
+            exit 1
+          fi
+
+          if [[ ! -d "project/app" ]]; then
+            echo "::error::V rozbalenom projekte chýba priečinok app."
+            exit 1
+          fi
+
+          echo "Projekt bol úspešne rozbalený."
           ls -la project
           ls -la project/app
 
       - name: Show app version
         working-directory: project
+        shell: bash
         run: |
           echo "ZIP used: ${{ steps.find_zip.outputs.zip_file }}"
-          grep -n "versionCode\\|versionName" app/build.gradle.kts || true
+
+          if [[ -f "app/build.gradle.kts" ]]; then
+            grep -n "versionCode\|versionName" app/build.gradle.kts || true
+          elif [[ -f "app/build.gradle" ]]; then
+            grep -n "versionCode\|versionName" app/build.gradle || true
+          fi
+
+      - name: Configure Google Maps API key
+        working-directory: project
+        shell: bash
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          if [[ -z "$MAPS_API_KEY" ]]; then
+            echo "::error::Chýba GitHub repository secret MAPS_API_KEY."
+            echo "::error::Otvorte Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          if [[ "$MAPS_API_KEY" != AIza* || ${#MAPS_API_KEY} -lt 30 ]]; then
+            echo "::error::Secret MAPS_API_KEY nemá platný formát Google API kľúča."
+            exit 1
+          fi
+
+          printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > secrets.properties
+
+          if ! grep -q '^MAPS_API_KEY=AIza' secrets.properties; then
+            echo "::error::Google Maps API kľúč sa nepodarilo vložiť."
+            exit 1
+          fi
+
+          echo "Google Maps API kľúč bol bezpečne vložený do projektu."
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -49,10 +105,26 @@ jobs:
 
       - name: Build debug APK
         working-directory: project
+        shell: bash
         run: gradle :app:assembleDebug --stacktrace
+
+      - name: Verify generated APK
+        shell: bash
+        run: |
+          APK_FILE="project/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [[ ! -f "$APK_FILE" ]]; then
+            echo "::error::APK súbor nebol vytvorený."
+            exit 1
+          fi
+
+          echo "APK bolo úspešne vytvorené:"
+          ls -lh "$APK_FILE"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Android-debug-apk-${{ steps.find_zip.outputs.zip_file }}
+          name: StrechoStav-Sketch-debug-apk
           path: project/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
